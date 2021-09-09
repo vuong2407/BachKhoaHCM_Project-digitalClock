@@ -1,0 +1,160 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+byte verticalLine[8] = {
+  B00100,
+  B00100,
+  B00100,
+  B00100,
+  B00100,
+  B00100,
+  B00100,
+  B00100
+};  
+
+byte char2[8] = {
+  B00000,
+  B00000,
+  B00000,
+  B11100,
+  B00100,
+  B00100,
+  B00100,
+  B00100
+};
+
+byte char1[8] = {
+  0b00000,
+  0b00000,
+  0b00000,
+  0b00111,
+  0b00100,
+  0b00100,
+  0b00100,
+  0b00100
+};
+
+byte char3[8] = {
+  0b00100,
+  0b00100,
+  0b00100,
+  0b00111,
+  0b00000,
+  0b00000,
+  0b00000,
+  0b00000
+};
+
+byte char4[8] = {
+  0b00100,
+  0b00100,
+  0b00100,
+  0b11100,
+  0b00000,
+  0b00000,
+  0b00000,
+  0b00000
+};
+
+bool onNormalScreen = true;
+bool oldOnNormalScreen = false;
+
+int btnChangeMode = 0;
+unsigned long flatSecondTime;
+
+int dataSecondCurrent = 0;
+int dataMinuteCurrent = 0;
+int dataHourCurrent = 0;
+
+
+void setup() {
+  pinMode(btnChangeMode, INPUT);
+  flatSecondTime = millis();
+  lcd.init();
+  lcd.backlight();
+}
+
+void normalShowLCD(){
+  if (onNormalScreen != oldOnNormalScreen){
+      onNormalScreen = false;
+      createCustomCharacters();
+      printFrame();
+      oldOnNormalScreen = onNormalScreen;
+  }
+  if ((unsigned long)(millis() - flatSecondTime) > 990){
+    lcd.setCursor(6, 1);
+    dataSecondCurrent = dataSecondCurrent + 1;
+    flatSecondTime = millis();
+    String dataShow = validTime(dataSecondCurrent, dataMinuteCurrent, dataHourCurrent);
+    lcd.print(dataShow);
+  }
+}
+
+void changeMode(){
+    lcd.clear();
+    for (;;){
+      lcd.setCursor(0,0);
+      lcd.print("Menu Mode"); 
+      lcd.setCursor(0, 1);
+      lcd.print("1: Time Current");
+      lcd.setCursor(0, 2);
+      lcd.print("2: Countting");
+      lcd.setCursor(0, 3);
+      lcd.print("3: Alarm");
+    }
+}
+
+void loop() {
+  normalShowLCD();
+  if (digitalRead(btnChangeMode) == LOW) changeMode();
+}
+
+String validTime(int &second, int &minute, int &hour){
+  if (second == 60){
+    second = 0;
+    minute += 1;
+  }
+  if (minute == 60){
+    minute = 0;
+    hour += 1;
+  }
+  if (hour == 24) hour = 0;
+  
+  String secondData = (String)((second < 10) ? "0" + (String)second : (String)second);
+  String minuteData = (String)((minute < 10) ? "0" + (String)minute : (String)minute);
+  String hourData = (String)((hour < 10) ? "0" + (String)hour : (String)hour);
+  return hourData + ":" + minuteData + ":" + secondData;
+}
+
+void printFrame()
+{
+  lcd.setCursor(1,0);
+  lcd.print("------------------");
+  lcd.setCursor(1,3);
+  lcd.print("------------------");
+  lcd.setCursor(0,1);
+  lcd.write(byte(0));
+  lcd.setCursor(0,2);
+  lcd.write(byte(0));
+  lcd.setCursor(19,1);
+  lcd.write(byte(0));
+  lcd.setCursor(19,2);
+  lcd.write(byte(0));
+  lcd.setCursor(0,0);
+  lcd.write(byte(1));
+  lcd.setCursor(19,0);
+  lcd.write(byte(2));
+  lcd.setCursor(0,3);
+  lcd.write(byte(3));
+  lcd.setCursor(19,3);
+  lcd.write(byte(4));
+}
+
+void createCustomCharacters()
+{
+  lcd.createChar(0, verticalLine);
+  lcd.createChar(1, char1);
+  lcd.createChar(2, char2);
+  lcd.createChar(3, char3);
+  lcd.createChar(4, char4);
+}
