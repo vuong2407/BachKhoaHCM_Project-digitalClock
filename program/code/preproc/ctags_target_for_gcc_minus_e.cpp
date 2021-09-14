@@ -1,6 +1,7 @@
 # 1 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 # 2 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino" 2
 # 3 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino" 2
+# 4 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino" 2
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 byte verticalLine[8] = {
   4,
@@ -80,47 +81,116 @@ byte customCharArrow[] = {
 
 };
 
+byte customCharBell[] = {
+  0,
+  4,
+  14,
+  14,
+  31,
+  0,
+  4,
+  0
+};
+
+byte customCharQuarterClock[] = {
+  0,
+  14,
+  25,
+  25,
+  31,
+  31,
+  14,
+  0
+};
+
+int melody[] = {262, 196, 196, 220, 196, 0, 247, 262};
+int noteDurations[] = {4, 8, 8, 4, 4, 4, 4, 4 };
+
 String dataCurrentTime;
 String oldDataCurrentTime;
 
 bool onNormalScreen = true;
 bool oldOnNormalScreen = false;
 bool currentTimeModeScreen = false;
-
+bool alarmModeScreen = false;
+bool countingModeScreen = false;
 int btnChangeMode = 0;
 int btnDone = 1;
 int btnDec = 2;
 int btnInc = 3;
-unsigned long flatSecondTime;
+int btnStop = 4;
+unsigned long flatSecondTime, oldPressBtn, flagSecondCounting;
 
-int dataSecondCurrent = 30;
+//data time current
+int dataSecondCurrent = 55;
 int dataMinuteCurrent = 30;
-int dataHourCurrent = 16;
+int dataHourCurrent = 12;
 
+//data time alarm
+int dataMinuteAlarm = 20;
+int dataHourAlarm = 6;
+int countVoice = 0;
+bool alarmFlag = true;
+int oldStateStop = 0x1;
+bool statusAlarm = false;
+
+//data time counting
+int dataMinuteCounting = 0;
+int dataSecondCounting = 0;
+bool flagCounting = false;
 
 void setup() {
   pinMode(btnChangeMode, 0x0);
   pinMode(btnDone, 0x0);
   pinMode(btnDec, 0x0);
   pinMode(btnInc, 0x0);
+  pinMode(btnStop, 0x0);
   flatSecondTime = millis();
   lcd.init();
   lcd.backlight();
 }
 
-void NormalShowLCD(){
-  if (onNormalScreen != oldOnNormalScreen){
-      onNormalScreen = false;
-      lcd.clear();
-      createCustomCharacters();
-      printFrame();
-      oldOnNormalScreen = onNormalScreen;
+void AlarmVoice() {
+  for (int thisNote = 0; thisNote < 8; thisNote++) {
+    int noteDuration = 1000 / noteDurations[thisNote];
+    tone(8, melody[thisNote], noteDuration);
+  }
+}
+
+
+void NormalShowLCD() {
+  if (onNormalScreen != oldOnNormalScreen) {
+    onNormalScreen = false;
+    lcd.clear();
+    createCustomCharacters();
+    printFrame();
+    oldOnNormalScreen = onNormalScreen;
   }
   UpdateCurrentTime(true);
+  String minuteData = (String)((dataMinuteAlarm < 10) ? "0" + (String)dataMinuteAlarm : (String)dataMinuteAlarm);
+  String hourData = (String)((dataHourAlarm < 10) ? "0" + (String)dataHourAlarm : (String)dataHourAlarm);
+  if (statusAlarm){
+    lcd.createChar(5, customCharBell);
+    lcd.setCursor(2, 2);
+    lcd.write(byte(5));
+    lcd.setCursor(3, 2);
+    lcd.print(hourData + ":" + minuteData);
+    lcd.createChar(6, customCharQuarterClock);
+    lcd.setCursor(12, 2);
+    lcd.write(byte(6));
+    lcd.setCursor(13, 2);
+    lcd.print(TimeToAlarm(dataHourCurrent, dataMinuteCurrent, dataHourAlarm, dataMinuteAlarm));
+  }
+  else{
+    lcd.setCursor(1, 2);
+    lcd.print("       ");
+    lcd.setCursor(13, 2);
+    lcd.print("      ");
+  }
 }
 
 void UpdateCurrentTime(bool flag) {
-  if ((unsigned long)(millis() - flatSecondTime) > 840){
+  if ((unsigned long)(millis() - flatSecondTime) > 1000) {
     flatSecondTime = millis();
     dataSecondCurrent = dataSecondCurrent + 1;
     dataCurrentTime = ValidTime(dataSecondCurrent, dataMinuteCurrent, dataHourCurrent);
@@ -128,62 +198,83 @@ void UpdateCurrentTime(bool flag) {
       lcd.setCursor(6, 1);
       lcd.print(dataCurrentTime);
     }
+    if ((dataHourCurrent == dataHourAlarm) && (dataMinuteCurrent == dataMinuteAlarm) && (dataSecondCurrent <= 59) && alarmFlag && statusAlarm) {
+      AlarmVoice();
+    }
   }
 }
 
-void ChangeMode(){
-    lcd.clear();
-    int tempChoose = 0;
-    int oldStateBtnDec = digitalRead(btnDec);
-    int oldStateBtnInc = digitalRead(btnInc);
-    for (;;){
-      UpdateCurrentTime(false);
-      lcd.setCursor(0, 0);
-      lcd.print("1: TIME CURRENT");
-      lcd.createChar(0, customCharChoose);
-      lcd.setCursor(0, 1);
-      lcd.print("2: COUNTING");
-      lcd.setCursor(0, 2);
-      lcd.print("3: ALARM");
-      lcd.setCursor(7, 3);
-      lcd.print("Cancel");
-      int stateBtnDec = digitalRead(btnDec);
-      int stateBtnInc = digitalRead(btnInc);
-      if ((stateBtnDec == 0x0) && (oldStateBtnDec != stateBtnDec)){
-        tempChoose = (tempChoose <= 2) ? tempChoose + 1 : tempChoose;
-        for (int i = 0; i < tempChoose; i++){
-          lcd.setCursor(19, i);
-          lcd.print(" ");
-        }
-        oldStateBtnDec = stateBtnDec;
-      }else oldStateBtnDec = stateBtnDec;
-      if ((stateBtnInc == 0x0) && (oldStateBtnInc != stateBtnInc)){
-        tempChoose = (tempChoose >= 0) ? tempChoose - 1 : tempChoose;
-        for (int i = 3; i > tempChoose; i--){
-          lcd.setCursor(19, i);
-          lcd.print(" ");
-        }
-        oldStateBtnInc = stateBtnInc;
-      }else oldStateBtnInc = stateBtnInc;
-      lcd.setCursor(19, tempChoose);
-      lcd.write(byte(0));
-      if (digitalRead(btnDone) == 0x0) {
-        switch(tempChoose){
-          case 0:
-            currentTimeModeScreen = true;
-            delay(140);
-            break;
-          case 3:
-            onNormalScreen = true;
-            break;
-        }
-        break;
-      }
+void CountDown(){
+  if ((unsigned long)(millis() - flagSecondCounting) > 1000) {
+    flagSecondCounting = millis();
+    dataSecondCounting -= 1;
+    if (dataSecondCounting < 0){
+      dataSecondCounting = 59;
+      dataMinuteCounting = (dataMinuteCounting == 0) ? 0 : dataMinuteCounting - 1;
     }
+  }
 }
 
-void CurrentTimeMode(){
-  if (currentTimeModeScreen == true){
+void ChangeMode() {
+  lcd.clear();
+  int tempChoose = 0;
+  int oldStateBtnDec = digitalRead(btnDec);
+  int oldStateBtnInc = digitalRead(btnInc);
+  for (;;) {
+    UpdateCurrentTime(false);
+    if ((digitalRead(btnStop) == 0x0) && (digitalRead(8) == 0x1)) alarmFlag = false;
+    lcd.setCursor(0, 0);
+    lcd.print("1: TIME CURRENT");
+    lcd.createChar(0, customCharChoose);
+    lcd.setCursor(0, 1);
+    lcd.print("2: COUNTING");
+    lcd.setCursor(0, 2);
+    lcd.print("3: ALARM");
+    lcd.setCursor(7, 3);
+    lcd.print("Cancel");
+    int stateBtnDec = digitalRead(btnDec);
+    int stateBtnInc = digitalRead(btnInc);
+    if ((stateBtnDec == 0x0) && (oldStateBtnDec != stateBtnDec)) {
+      tempChoose = (tempChoose <= 2) ? tempChoose + 1 : tempChoose;
+      for (int i = 0; i < tempChoose; i++) {
+        lcd.setCursor(19, i);
+        lcd.print(" ");
+      }
+      oldStateBtnDec = stateBtnDec;
+    } else oldStateBtnDec = stateBtnDec;
+    if ((stateBtnInc == 0x0) && (oldStateBtnInc != stateBtnInc)) {
+      tempChoose = (tempChoose > 0) ? tempChoose - 1 : tempChoose;
+      for (int i = 3; i > tempChoose; i--) {
+        lcd.setCursor(19, i);
+        lcd.print(" ");
+      }
+      oldStateBtnInc = stateBtnInc;
+    } else oldStateBtnInc = stateBtnInc;
+    lcd.setCursor(19, tempChoose);
+    lcd.write(byte(0));
+    if (digitalRead(btnDone) == 0x0) {
+      switch (tempChoose) {
+        case 0:
+          currentTimeModeScreen = true;
+          break;
+        case 1:
+          countingModeScreen = true;
+          break;
+        case 2:
+          alarmModeScreen = true;
+          break;
+        case 3:
+          onNormalScreen = true;
+          break;
+      }
+      VibrationPushButton(0x0, btnDone);
+      break;
+    }
+  }
+}
+
+void CurrentTimeMode() {
+  if (currentTimeModeScreen == true) {
     lcd.clear();
     lcd.setCursor(0, 3);
     lcd.print("PRESS DONE TO ACCEPT");
@@ -191,35 +282,36 @@ void CurrentTimeMode(){
     lcd.setCursor(7, 0);
     lcd.write(byte(0));
 
+    bool flagBtnDone = true;
+
     int oldStateBtnDec = digitalRead(btnDec);
     int oldStateBtnInc = digitalRead(btnInc);
 
     int arrow = 7;
     int oldStateBtnChange = digitalRead(btnChangeMode);
-    int stateBtnDec = digitalRead(btnDec);
-    int stateBtnInc = digitalRead(btnInc);
 
     String tempDataCurrentTime = dataCurrentTime;
     int tempHour = dataHourCurrent;
     int tempMinute = dataMinuteCurrent;
     int tempSecond = dataSecondCurrent;
 
-    for (;;){
+    for (;;) {
+      if ((digitalRead(btnStop) == 0x0) && (digitalRead(8) == 0x1)) alarmFlag = false;
       lcd.setCursor(6, 1);
       lcd.print(tempDataCurrentTime);
       int stateBtnChange = digitalRead(btnChangeMode);
       int stateBtnDec = digitalRead(btnDec);
       int stateBtnInc = digitalRead(btnInc);
-      if ((stateBtnChange == 0x0) && (oldStateBtnChange != stateBtnChange)){
+      if ((stateBtnChange == 0x0) && (oldStateBtnChange != stateBtnChange)) {
         lcd.setCursor(arrow, 0);
         lcd.print(" ");
         arrow = (arrow <= 12) ? arrow += 3 : 7;
         oldStateBtnChange = stateBtnChange;
-      }else oldStateBtnChange = stateBtnChange;
+      } else oldStateBtnChange = stateBtnChange;
       lcd.setCursor(arrow, 0);
       lcd.write(byte(0));
-      if ((stateBtnDec == 0x0) && (oldStateBtnDec != stateBtnDec)){
-        switch(arrow){
+      if ((stateBtnDec == 0x0) && (oldStateBtnDec != stateBtnDec)) {
+        switch (arrow) {
           case 7:
             tempHour = (tempHour == 0) ? tempHour : tempHour -= 1;
             tempDataCurrentTime = ValidTime(tempSecond, tempMinute, tempHour);
@@ -234,10 +326,10 @@ void CurrentTimeMode(){
             break;
         }
         oldStateBtnDec = stateBtnDec;
-      }else oldStateBtnDec = stateBtnDec;
+      } else oldStateBtnDec = stateBtnDec;
 
-      if ((stateBtnInc == 0x0) && (oldStateBtnInc != stateBtnInc)){
-        switch(arrow){
+      if ((stateBtnInc == 0x0) && (oldStateBtnInc != stateBtnInc)) {
+        switch (arrow) {
           case 7:
             tempHour += 1;
             tempDataCurrentTime = ValidTime(tempSecond, tempMinute, tempHour);
@@ -252,7 +344,7 @@ void CurrentTimeMode(){
             break;
         }
         oldStateBtnInc = stateBtnInc;
-      }else oldStateBtnInc = stateBtnInc;
+      } else oldStateBtnInc = stateBtnInc;
       if (digitalRead(btnDone) == 0x0) {
         onNormalScreen = true;
         currentTimeModeScreen = false;
@@ -265,18 +357,218 @@ void CurrentTimeMode(){
   }
 }
 
-void loop() {
-  NormalShowLCD();
-  if (digitalRead(btnChangeMode) == 0x0) ChangeMode();
-  CurrentTimeMode();
+void AlarmMode() {
+  if (alarmModeScreen == true) {
+    lcd.clear();
+    lcd.createChar(0, customCharArrow);
+    lcd.setCursor(9, 0);
+    lcd.write(byte(0));
+    lcd.setCursor(0, 3);
+    lcd.print("PRESS DONE TO ACCEPT");
+    int arrow = 9;
+    int oldStateBtnChange = digitalRead(btnChangeMode);
+    int oldStateBtnDec = digitalRead(btnDec);
+    int oldStateBtnInc = digitalRead(btnInc);
+
+    int tempHour = dataHourAlarm;
+    int tempMinute = dataMinuteAlarm;
+    String minuteData = (String)((dataMinuteAlarm < 10) ? "0" + (String)dataMinuteAlarm : (String)dataMinuteAlarm);
+    String hourData = (String)((dataHourAlarm < 10) ? "0" + (String)dataHourAlarm : (String)dataHourAlarm);
+    for (;;) {
+      UpdateCurrentTime(false);
+      if ((digitalRead(btnStop) == 0x0) && (digitalRead(8) == 0x1)) alarmFlag = false;
+      int stateBtnChange = digitalRead(btnChangeMode);
+      int stateBtnDec = digitalRead(btnDec);
+      int stateBtnInc = digitalRead(btnInc);
+      if ((stateBtnChange == 0x0) && (oldStateBtnChange != stateBtnChange)) {
+        lcd.setCursor(arrow, 0);
+        lcd.print(" ");
+        arrow = (arrow <= 9) ? arrow += 3 : 9;
+        oldStateBtnChange = stateBtnChange;
+      } else oldStateBtnChange = stateBtnChange;
+      lcd.setCursor(arrow, 0);
+      lcd.write(byte(0));
+      lcd.setCursor(8, 1);
+      lcd.print(hourData + ":" + minuteData);
+
+      if ((stateBtnDec == 0x0) && (oldStateBtnDec != stateBtnDec)) {
+        switch (arrow) {
+          case 9:
+            tempHour = (tempHour == 0) ? tempHour : tempHour -= 1;
+            hourData = (String)((tempHour < 10) ? "0" + (String)tempHour : (String)tempHour);
+            break;
+          case 12:
+            tempMinute = (tempMinute == 0) ? tempMinute : tempMinute -= 1;
+            minuteData = (String)((tempMinute < 10) ? "0" + (String)tempMinute : (String)tempMinute);
+            break;
+        }
+        oldStateBtnDec = stateBtnDec;
+      } else oldStateBtnDec = stateBtnDec;
+      if ((stateBtnInc == 0x0) && (oldStateBtnInc != stateBtnInc)) {
+        switch (arrow) {
+          case 9:
+            tempHour = (tempHour == 23) ? 0 : tempHour + 1;
+            hourData = (String)((tempHour < 10) ? "0" + (String)tempHour : (String)tempHour);
+            break;
+          case 12:
+            tempMinute = (tempMinute == 60) ? 0 : tempMinute + 1;
+            minuteData = (String)((tempMinute < 10) ? "0" + (String)tempMinute : (String)tempMinute);
+            break;
+        }
+        oldStateBtnInc = stateBtnInc;
+      } else oldStateBtnInc = stateBtnInc;
+      if (digitalRead(btnDone) == 0x0) {
+        statusAlarm = true;
+        onNormalScreen = true;
+        alarmModeScreen = false;
+        dataHourAlarm = tempHour;
+        dataMinuteAlarm = tempMinute;
+        // kiem tra xem luc bat bao thuc co trung vs gio hien tai neu co thi k cho chuong bao thuc keu
+        if ((dataHourCurrent == dataHourAlarm) && (dataMinuteCurrent == dataMinuteAlarm)) alarmFlag = false; else alarmFlag = true;
+        break;
+      }
+    }
+  }
 }
 
-String ValidTime(int &second, int &minute, int &hour){
-  if (second == 60){
+void CountingMode() {
+  if (countingModeScreen == true) {
+    lcd.clear();
+    lcd.createChar(0, customCharArrow);
+    lcd.setCursor(9, 0);
+    lcd.write(byte(0));
+    lcd.setCursor(0, 3);
+    lcd.print("PRESS DONE TO ACCEPT");
+    int arrow = 9;
+    int oldStateBtnChange = digitalRead(btnChangeMode);
+    int oldStateBtnDec = digitalRead(btnDec);
+    int oldStateBtnInc = digitalRead(btnInc);
+
+    String minuteData = (String)((dataMinuteCounting < 10) ? "0" + (String)dataMinuteCounting : (String)dataMinuteCounting);
+    String secondData = (String)((dataSecondCounting < 10) ? "0" + (String)dataSecondCounting : (String)dataSecondCounting);
+    for (;;) {
+      UpdateCurrentTime(false);
+      if (flagCounting){
+        CountDown();
+        minuteData = (String)((dataMinuteCounting < 10) ? "0" + (String)dataMinuteCounting : (String)dataMinuteCounting);
+        secondData = (String)((dataSecondCounting < 10) ? "0" + (String)dataSecondCounting : (String)dataSecondCounting);
+        if ((dataMinuteCounting == 0) && (dataSecondCounting == 0)) flagCounting = false;
+      }
+      int stateBtnChange = digitalRead(btnChangeMode);
+      int stateBtnDec = digitalRead(btnDec);
+      int stateBtnInc = digitalRead(btnInc);
+      if ((stateBtnChange == 0x0) && (oldStateBtnChange != stateBtnChange)) {
+        lcd.setCursor(arrow, 0);
+        lcd.print(" ");
+        arrow = (arrow <= 9) ? arrow += 3 : 9;
+        oldStateBtnChange = stateBtnChange;
+      } else oldStateBtnChange = stateBtnChange;
+      if (flagCounting){
+        lcd.setCursor(arrow, 0);
+        lcd.print("  ");
+      }else{
+        lcd.setCursor(arrow, 0);
+        lcd.write(byte(0));
+      }
+      lcd.setCursor(8, 1);
+      lcd.print(minuteData + ":" + secondData);
+
+      if ((stateBtnDec == 0x0) && (oldStateBtnDec != stateBtnDec)) {
+        switch (arrow) {
+          case 9:
+            dataMinuteCounting = (dataMinuteCounting == 0) ? dataMinuteCounting : dataMinuteCounting -= 1;
+            minuteData = (String)((dataMinuteCounting < 10) ? "0" + (String)dataMinuteCounting : (String)dataMinuteCounting);
+            break;
+          case 12:
+            dataSecondCounting = (dataSecondCounting == 0) ? dataSecondCounting : dataSecondCounting -= 1;
+            secondData = (String)((dataSecondCounting < 10) ? "0" + (String)dataSecondCounting : (String)dataSecondCounting);
+            break;
+        }
+        oldStateBtnDec = stateBtnDec;
+      } else oldStateBtnDec = stateBtnDec;
+      if ((stateBtnInc == 0x0) && (oldStateBtnInc != stateBtnInc)) {
+        switch (arrow) {
+          case 9:
+            dataMinuteCounting = (dataMinuteCounting == 99) ? 0 : dataMinuteCounting + 1;
+            minuteData = (String)((dataMinuteCounting < 10) ? "0" + (String)dataMinuteCounting : (String)dataMinuteCounting);
+            break;
+          case 12:
+            dataSecondCounting = (dataSecondCounting == 60) ? 0 : dataSecondCounting + 1;
+            secondData = (String)((dataSecondCounting < 10) ? "0" + (String)dataSecondCounting : (String)dataSecondCounting);
+            break;
+        }
+        oldStateBtnInc = stateBtnInc;
+      } else oldStateBtnInc = stateBtnInc;
+      if (digitalRead(btnDone) == 0x0) {
+        if ((dataSecondCounting != 0) || (dataMinuteCounting != 0)){
+          flagCounting = true;
+          flagSecondCounting = millis();
+        }else{
+          statusAlarm = true;
+          onNormalScreen = true;
+          countingModeScreen = false;
+          break;
+        }
+      }
+    }
+  }
+}
+
+void ChangeStatusAlarm() {
+  int newStateStop = digitalRead(btnStop);
+  if (newStateStop != oldStateStop) {
+    oldPressBtn = millis();
+    oldStateStop = newStateStop;
+  }
+  if (((millis() - oldPressBtn) > 2000) && (oldPressBtn != 0) && (newStateStop) == 0x0) {
+    statusAlarm = !statusAlarm;
+    // kiem tra xem luc bat bao thuc co trung vs gio hien tai neu co thi k cho chuong bao thuc keu
+    if ((dataHourCurrent == dataHourAlarm) && (dataMinuteCurrent == dataMinuteAlarm)) alarmFlag = false; else alarmFlag = true;
+    oldPressBtn = 0;
+  }
+}
+
+String TimeToAlarm(int hourCurrent, int minuteCurrent, int hourAlarm, int minuteAlarm){
+  int minute;
+  int hour = ((hourAlarm - hourCurrent) < 0) ? 24 + hourAlarm - hourCurrent : hourAlarm - hourCurrent;
+  if ((hourAlarm - hourCurrent) == 0){
+     if ((minuteAlarm - minuteCurrent) > 0) hour = 0;
+     else if ((minuteAlarm - minuteCurrent) == 0) hour = 24;
+     else if (((minuteAlarm - minuteCurrent) < 0)) hour = 23;
+  }
+  if ((minuteAlarm - minuteCurrent) < 0) {
+    minute = 60 + minuteAlarm - minuteCurrent;
+    hour -= 1;
+  } else minute = minuteAlarm - minuteCurrent;
+
+  String dataMinute = (String)((minute < 10) ? "0" + (String)minute : (String)minute);
+  String dataHour = (String)((hour < 10) ? "0" + (String)hour : (String)hour);
+  return dataHour + "h" + dataMinute + "m";
+}
+
+void loop() {
+  if (digitalRead(btnChangeMode) == 0x0) ChangeMode();
+  CurrentTimeMode();
+  if ((digitalRead(btnStop) == 0x0) && (digitalRead(8) == 0x1)) alarmFlag = false;
+  AlarmMode();
+  NormalShowLCD();
+  CountingMode();
+  ChangeStatusAlarm();
+}
+
+void VibrationPushButton(int oldStateBtn, int numBtn) {
+  for(;;){
+    int newStateBtn = digitalRead(numBtn);
+    if (newStateBtn != oldStateBtn) break;
+  }
+}
+
+String ValidTime(int &second, int &minute, int &hour) {
+  if (second == 60) {
     second = 0;
     minute += 1;
   }
-  if (minute == 60){
+  if (minute == 60) {
     minute = 0;
     hour += 1;
   }
@@ -290,25 +582,25 @@ String ValidTime(int &second, int &minute, int &hour){
 
 void printFrame()
 {
-  lcd.setCursor(1,0);
+  lcd.setCursor(1, 0);
   lcd.print("------------------");
-  lcd.setCursor(1,3);
+  lcd.setCursor(1, 3);
   lcd.print("------------------");
-  lcd.setCursor(0,1);
+  lcd.setCursor(0, 1);
   lcd.write(byte(0));
-  lcd.setCursor(0,2);
+  lcd.setCursor(0, 2);
   lcd.write(byte(0));
-  lcd.setCursor(19,1);
+  lcd.setCursor(19, 1);
   lcd.write(byte(0));
-  lcd.setCursor(19,2);
+  lcd.setCursor(19, 2);
   lcd.write(byte(0));
-  lcd.setCursor(0,0);
+  lcd.setCursor(0, 0);
   lcd.write(byte(1));
-  lcd.setCursor(19,0);
+  lcd.setCursor(19, 0);
   lcd.write(byte(2));
-  lcd.setCursor(0,3);
+  lcd.setCursor(0, 3);
   lcd.write(byte(3));
-  lcd.setCursor(19,3);
+  lcd.setCursor(19, 3);
   lcd.write(byte(4));
 }
 

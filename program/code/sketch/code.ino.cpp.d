@@ -14,4 +14,5 @@ D:\thiet_ke_he_thong_nhung\btl\program\code\sketch\code.ino.cpp.o: \
  C:\Users\Vuong-Nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.3\libraries\Wire\src/Wire.h \
  C:\Users\Vuong-Nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.3\cores\arduino/Stream.h \
  C:\Users\Vuong-Nguyen\Documents\Arduino\libraries\LiquidCrystal_I2C/LiquidCrystal_I2C.h \
- C:\Users\Vuong-Nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.3\cores\arduino/Print.h
+ C:\Users\Vuong-Nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.3\cores\arduino/Print.h \
+ C:\Users\Vuong-Nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.3\cores\arduino/pitches.h
