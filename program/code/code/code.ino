@@ -121,13 +121,13 @@ int btnStop = 4;
 unsigned long flatSecondTime, oldPressBtn, flagSecondCounting;
 
 //data time current
-int dataSecondCurrent = 55;
-int dataMinuteCurrent = 30;
+int dataSecondCurrent = 45;
+int dataMinuteCurrent = 33;
 int dataHourCurrent = 12;
 
 //data time alarm
-int dataMinuteAlarm = 20;
-int dataHourAlarm = 6;
+int dataMinuteAlarm = 33;
+int dataHourAlarm = 11;
 int countVoice = 0;
 bool alarmFlag = true;
 int oldStateStop = HIGH;
@@ -189,6 +189,7 @@ void NormalShowLCD() {
 }
 
 void UpdateCurrentTime(bool flag) {
+  if ((digitalRead(btnStop) == LOW) && (digitalRead(8) == HIGH)) alarmFlag = false;
   if ((unsigned long)(millis() - flatSecondTime) > 1000) {
     flatSecondTime = millis();
     dataSecondCurrent = dataSecondCurrent + 1;
@@ -446,6 +447,7 @@ void CountingMode() {
     String minuteData = (String)((dataMinuteCounting < 10) ? "0" + (String)dataMinuteCounting : (String)dataMinuteCounting);
     String secondData = (String)((dataSecondCounting < 10) ? "0" + (String)dataSecondCounting : (String)dataSecondCounting);
     for (;;) {
+      if ((digitalRead(btnStop) == LOW) && (digitalRead(8) == HIGH)) alarmFlag = false;
       UpdateCurrentTime(false);
       if (flagCounting){
         CountDown();
@@ -529,15 +531,17 @@ void ChangeStatusAlarm() {
 
 String TimeToAlarm(int hourCurrent, int minuteCurrent, int hourAlarm, int minuteAlarm){
   int minute;
+  bool spec = false;
   int hour = ((hourAlarm - hourCurrent) < 0) ? 24 + hourAlarm - hourCurrent : hourAlarm - hourCurrent;
   if ((hourAlarm - hourCurrent) == 0){
      if ((minuteAlarm - minuteCurrent) > 0) hour = 0; 
      else if ((minuteAlarm - minuteCurrent) == 0) hour = 24;
-     else if (((minuteAlarm - minuteCurrent) < 0)) hour = 23;
+     else if (((minuteAlarm - minuteCurrent) < 0)) { hour = 23; spec = true; }
   }
   if ((minuteAlarm - minuteCurrent) < 0) {
     minute = 60 + minuteAlarm - minuteCurrent;
-    hour -= 1;
+    hour = spec ? 23 : hour - 1;
+    spec = false;
   } else minute = minuteAlarm - minuteCurrent;
     
   String dataMinute = (String)((minute < 10) ? "0" + (String)minute : (String)minute);
@@ -546,9 +550,9 @@ String TimeToAlarm(int hourCurrent, int minuteCurrent, int hourAlarm, int minute
 }
 
 void loop() {
+  if ((digitalRead(btnStop) == LOW) && (digitalRead(8) == HIGH)) alarmFlag = false;
   if (digitalRead(btnChangeMode) == LOW) ChangeMode();
   CurrentTimeMode();
-  if ((digitalRead(btnStop) == LOW) && (digitalRead(8) == HIGH)) alarmFlag = false;
   AlarmMode();
   NormalShowLCD();
   CountingMode();

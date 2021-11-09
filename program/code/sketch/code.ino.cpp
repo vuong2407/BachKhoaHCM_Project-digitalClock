@@ -123,13 +123,13 @@ int btnStop = 4;
 unsigned long flatSecondTime, oldPressBtn, flagSecondCounting;
 
 //data time current
-int dataSecondCurrent = 55;
-int dataMinuteCurrent = 30;
+int dataSecondCurrent = 45;
+int dataMinuteCurrent = 33;
 int dataHourCurrent = 12;
 
 //data time alarm
-int dataMinuteAlarm = 20;
-int dataHourAlarm = 6;
+int dataMinuteAlarm = 33;
+int dataHourAlarm = 11;
 int countVoice = 0;
 bool alarmFlag = true;
 int oldStateStop = HIGH;
@@ -148,29 +148,29 @@ void AlarmVoice();
 void NormalShowLCD();
 #line 191 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void UpdateCurrentTime(bool flag);
-#line 206 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 207 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void CountDown();
-#line 217 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 218 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void ChangeMode();
-#line 275 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 276 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void CurrentTimeMode();
-#line 359 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 360 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void AlarmMode();
-#line 433 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 434 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void CountingMode();
-#line 516 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 518 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void ChangeStatusAlarm();
-#line 530 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 532 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 String TimeToAlarm(int hourCurrent, int minuteCurrent, int hourAlarm, int minuteAlarm);
-#line 548 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 552 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void loop();
-#line 558 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 562 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void VibrationPushButton(int oldStateBtn, int numBtn);
-#line 565 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 569 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 String ValidTime(int &second, int &minute, int &hour);
-#line 582 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 586 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void printFrame();
-#line 606 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
+#line 610 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void createCustomCharacters();
 #line 141 "D:\\thiet_ke_he_thong_nhung\\btl\\program\\code\\code\\code.ino"
 void setup() {
@@ -224,6 +224,7 @@ void NormalShowLCD() {
 }
 
 void UpdateCurrentTime(bool flag) {
+  if ((digitalRead(btnStop) == LOW) && (digitalRead(8) == HIGH)) alarmFlag = false;
   if ((unsigned long)(millis() - flatSecondTime) > 1000) {
     flatSecondTime = millis();
     dataSecondCurrent = dataSecondCurrent + 1;
@@ -481,6 +482,7 @@ void CountingMode() {
     String minuteData = (String)((dataMinuteCounting < 10) ? "0" + (String)dataMinuteCounting : (String)dataMinuteCounting);
     String secondData = (String)((dataSecondCounting < 10) ? "0" + (String)dataSecondCounting : (String)dataSecondCounting);
     for (;;) {
+      if ((digitalRead(btnStop) == LOW) && (digitalRead(8) == HIGH)) alarmFlag = false;
       UpdateCurrentTime(false);
       if (flagCounting){
         CountDown();
@@ -564,15 +566,17 @@ void ChangeStatusAlarm() {
 
 String TimeToAlarm(int hourCurrent, int minuteCurrent, int hourAlarm, int minuteAlarm){
   int minute;
+  bool spec = false;
   int hour = ((hourAlarm - hourCurrent) < 0) ? 24 + hourAlarm - hourCurrent : hourAlarm - hourCurrent;
   if ((hourAlarm - hourCurrent) == 0){
      if ((minuteAlarm - minuteCurrent) > 0) hour = 0; 
      else if ((minuteAlarm - minuteCurrent) == 0) hour = 24;
-     else if (((minuteAlarm - minuteCurrent) < 0)) hour = 23;
+     else if (((minuteAlarm - minuteCurrent) < 0)) { hour = 23; spec = true; }
   }
   if ((minuteAlarm - minuteCurrent) < 0) {
     minute = 60 + minuteAlarm - minuteCurrent;
-    hour -= 1;
+    hour = spec ? 23 : hour - 1;
+    spec = false;
   } else minute = minuteAlarm - minuteCurrent;
     
   String dataMinute = (String)((minute < 10) ? "0" + (String)minute : (String)minute);
@@ -581,9 +585,9 @@ String TimeToAlarm(int hourCurrent, int minuteCurrent, int hourAlarm, int minute
 }
 
 void loop() {
+  if ((digitalRead(btnStop) == LOW) && (digitalRead(8) == HIGH)) alarmFlag = false;
   if (digitalRead(btnChangeMode) == LOW) ChangeMode();
   CurrentTimeMode();
-  if ((digitalRead(btnStop) == LOW) && (digitalRead(8) == HIGH)) alarmFlag = false;
   AlarmMode();
   NormalShowLCD();
   CountingMode();
